@@ -1,0 +1,42 @@
+
+plugins {
+	id 'org.springframework.boot' version '2.1.2.RELEASE'
+}
+
+apply plugin: 'java'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+	compile project(":org.pcm.automation.core")
+    compile project(":org.pcm.automation.api")
+
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web
+	compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.1.2.RELEASE'
+}
+
+bootJar {
+    baseName = 'pcm-analysis-interface'
+    version =  '0.1.0'
+}
+
+task fatJar(type: Jar) {
+    classifier = 'all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+    manifest {
+        attributes 'Implementation-Title': 'PCM Interface',
+        	'Implementation-Version': '1.0',  
+        	'Main-Class': 'org.pcm.automation.iface.start.StartPipeline'
+    }
+    zip64=true
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+}
+
+jar {
+    zip64=true
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+  	from{
+    	configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+  	}
+}

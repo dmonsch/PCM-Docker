@@ -1,0 +1,3 @@
+rootProject.name = 'org.pcm.automation.root'
+
+include "org.pcm.automation.core", "org.pcm.automation.interface", "org.pcm.automation.api"
