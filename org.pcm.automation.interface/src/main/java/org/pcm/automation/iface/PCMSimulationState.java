@@ -19,10 +19,10 @@ import org.palladiosimulator.pcm.system.System;
 import org.palladiosimulator.pcm.usagemodel.UsageModel;
 import org.palladiosimulator.servicelevelobjective.ServiceLevelObjectiveRepository;
 import org.palladiosimulator.servicelevelobjective.ServicelevelObjectiveFactory;
+import org.pcm.automation.api.client.util.EMFUtil;
 import org.pcm.automation.api.data.ESimulationPart;
 import org.pcm.automation.api.data.ESimulationState;
 import org.pcm.automation.api.data.PalladioAnalysisResults;
-import org.pcm.automation.api.util.PcmUtils;
 import org.pcm.automation.core.ExperimentBuilder;
 import org.pcm.automation.core.HeadlessExecutor;
 import org.springframework.web.multipart.MultipartFile;
@@ -174,13 +174,13 @@ public class PCMSimulationState implements ICompletionInterface {
 			sloFile = createSloRepositoryIfNotExists();
 		}
 
-		this.inMemoryAllocation = PcmUtils.readFromFile(allocationFile.getAbsolutePath(), Allocation.class);
-		this.inMemoryEnv = PcmUtils.readFromFile(environmentFile.getAbsolutePath(), ResourceEnvironment.class);
-		this.inMemoryRepository = PcmUtils.readFromFile(repositoryFile.getAbsolutePath(), Repository.class);
-		this.inMemorySystem = PcmUtils.readFromFile(systemFile.getAbsolutePath(), System.class);
-		this.inMemoryUsage = PcmUtils.readFromFile(usageModelFile.getAbsolutePath(), UsageModel.class);
+		this.inMemoryAllocation = EMFUtil.readFromFile(allocationFile.getAbsolutePath(), Allocation.class);
+		this.inMemoryEnv = EMFUtil.readFromFile(environmentFile.getAbsolutePath(), ResourceEnvironment.class);
+		this.inMemoryRepository = EMFUtil.readFromFile(repositoryFile.getAbsolutePath(), Repository.class);
+		this.inMemorySystem = EMFUtil.readFromFile(systemFile.getAbsolutePath(), System.class);
+		this.inMemoryUsage = EMFUtil.readFromFile(usageModelFile.getAbsolutePath(), UsageModel.class);
 
-		this.inMemorySlos = PcmUtils.readFromFile(sloFile.getAbsolutePath(), ServiceLevelObjectiveRepository.class);
+		this.inMemorySlos = EMFUtil.readFromFile(sloFile.getAbsolutePath(), ServiceLevelObjectiveRepository.class);
 
 		// @formatter:off
 		this.currentConfiguration = 
@@ -209,7 +209,7 @@ public class PCMSimulationState implements ICompletionInterface {
 		File tempPath = new File(parentFolder, "empty.slo");
 		ServiceLevelObjectiveRepository repo = ServicelevelObjectiveFactory.eINSTANCE
 				.createServiceLevelObjectiveRepository();
-		PcmUtils.saveToFile(repo, tempPath.getAbsolutePath());
+		EMFUtil.saveToFile(repo, tempPath.getAbsolutePath());
 		return tempPath;
 	}
 

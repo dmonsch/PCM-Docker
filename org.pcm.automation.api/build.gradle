@@ -1,9 +1,16 @@
 
 dependencies {
-
 	// https://mvnrepository.com/artifact/org.jscience/jscience
 	compile group: 'org.jscience', name: 'jscience', version: '4.3.1'
 	
+	compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simucom:1.0.0+'
+    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simulizar:1.0.0+'
+    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simucom.model:1.0.0+'
+    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simulizar.model:1.0.0+'
+    
+    compile 'extra:org.palladiosimulator.experimentautomation:1.1.0+'
+    compile 'extra:org.palladiosimulator.experimentautomation.application:1.1.0+'
+
 	compile 'org.eclipse.emf:org.eclipse.emf.ecore:2.11.1-v20150805-0538'
 	compile 'org.eclipse.emf:org.eclipse.emf.ecore.xmi:2.11.+'
 	compile 'org.eclipse.emf:org.eclipse.emf.common:2.11.+'
@@ -11,6 +18,11 @@ dependencies {
     
   	compile 'extra:org.eclipse.ocl:3.6.200+'
   	compile 'extra:org.eclipse.ocl.ecore:3.6.200+'
+
+    compile 'extra:org.eclipse.emf.cdo:4.6.0+'
+	compile 'extra:org.eclipse.emf.cdo.common:4.6.0+'
+	compile 'extra:org.eclipse.net4j:4.6.0+'
+	compile 'extra:org.eclipse.net4j.util:3.7.0+'
 	
 	// from extra repo
     compile 'extra:org.palladiosimulator.pcm:4.1.0+'
@@ -33,20 +45,8 @@ dependencies {
     compile 'extra:org.palladiosimulator.metricspec:1.0.3.201709282208'
     compile 'extra:org.palladiosimulator.pcm.resources:4.0.0+'
     
-    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simucom:1.0.0+'
-    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simulizar:1.0.0+'
-    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simucom.model:1.0.0+'
-    compile 'extra:org.palladiosimulator.experimentautomation.application.tooladapter.simulizar.model:1.0.0+'
-    
-    compile 'extra:org.palladiosimulator.experimentautomation:1.1.0+'
     compile 'extra:org.palladiosimulator.servicelevelobjective:1.1.0+'
     compile 'extra:org.palladiosimulator.monitorrepository:3.0.1+'
-    compile 'extra:org.palladiosimulator.experimentautomation.application:1.1.0+'
-    
-    compile 'extra:org.eclipse.emf.cdo:4.6.0+'
-	compile 'extra:org.eclipse.emf.cdo.common:4.6.0+'
-	compile 'extra:org.eclipse.net4j:4.6.0+'
-	compile 'extra:org.eclipse.net4j.util:3.7.0+'
 	
 	testCompile 'junit:junit:4.12'
 	
@@ -63,3 +63,13 @@ dependencies {
 
 }
 
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+	manifest {
+        attributes 'Implementation-Title': 'PCM Docker API Client',  
+        	'Implementation-Version': '1.0'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}

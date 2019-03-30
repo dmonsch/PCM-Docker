@@ -3,27 +3,20 @@ package org.pcm.automation.api.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.http.entity.ContentType;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.resource.Resource;
 import org.palladiosimulator.pcm.allocation.Allocation;
 import org.palladiosimulator.pcm.repository.Repository;
 import org.palladiosimulator.pcm.resourceenvironment.ResourceEnvironment;
 import org.palladiosimulator.pcm.system.System;
 import org.palladiosimulator.pcm.usagemodel.UsageModel;
+import org.pcm.automation.api.client.logic.TransitiveModelTransformer;
+import org.pcm.automation.api.client.util.EMFUtil;
 import org.pcm.automation.api.data.ESimulationPart;
 import org.pcm.automation.api.data.ESimulationState;
 import org.pcm.automation.api.data.json.JsonAnalysisResults;
-import org.pcm.automation.api.util.PcmUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
@@ -107,72 +100,17 @@ public class SimulationClient {
 		return this;
 	}
 
-	// TODO generalize to transitive closure full
 	public SimulationClient upload() {
-		// transitive closure of models and send
-		Set<URI> resourcesClosure = new HashSet<>();
-		List<EObject> modelList = new ArrayList<>();
+		// create transformer
+		TransitiveModelTransformer transformer = new TransitiveModelTransformer(inMemoryAlloc, inMemoryEnv,
+				inMemoryRepo, inMemorySystem, inMemoryUsagemodel);
 
-		// add models
-		modelList.add(inMemoryAlloc);
-		modelList.add(inMemoryEnv);
-		modelList.add(inMemoryRepo);
-		modelList.add(inMemorySystem);
-		modelList.add(inMemoryUsagemodel);
+		// create uri transformer
+		DefaultURITransformer uriTransformer = new DefaultURITransformer(inMemoryRepo, inMemorySystem, inMemoryAlloc,
+				inMemoryEnv, inMemoryUsagemodel);
 
-		// add resources
-		modelList.forEach(model -> resourcesClosure.add(model.eResource().getURI()));
-
-		// build closure
-		// TODO full closure
-		modelList.forEach(model -> allCrossReferences(model).stream().forEach(ref -> {
-			resourcesClosure.add(ref.getURI());
-		}));
-
-		// generate file names for each
-		Map<URI, URI> fileNameMapping = new HashMap<>();
-		// TODO create enum for file paths
-		fileNameMapping.put(inMemoryAlloc.eResource().getURI(), URI.createFileURI("temp.allocation"));
-		fileNameMapping.put(inMemoryEnv.eResource().getURI(), URI.createFileURI("temp.resourceenvironment"));
-		fileNameMapping.put(inMemoryRepo.eResource().getURI(), URI.createFileURI("temp.repository"));
-		fileNameMapping.put(inMemorySystem.eResource().getURI(), URI.createFileURI("temp.system"));
-		fileNameMapping.put(inMemoryUsagemodel.eResource().getURI(), URI.createFileURI("temp.usagemodel"));
-
-		// additional files
-		Set<URI> remainingOnly = new HashSet<>();
-		int currentFileId = 0;
-		for (URI other : resourcesClosure) {
-			if (!fileNameMapping.containsKey(other)) {
-				remainingOnly.add(other);
-				String additionalPath = "additional/model" + String.valueOf(currentFileId++) + ".model";
-				fileNameMapping.put(other, URI.createFileURI(additionalPath));
-			}
-		}
-
-		// modify links
-		// TODO transitive
-		for (EObject model : modelList) {
-			// TODO code duplication
-			if (model.eCrossReferences().size() > 0) {
-				model.eCrossReferences().forEach(cr -> {
-					if (cr != null && cr.eResource() != null && fileNameMapping.containsKey(cr.eResource().getURI())) {
-						// replace
-						cr.eResource().setURI(fileNameMapping.get(cr.eResource().getURI()));
-					}
-				});
-			}
-
-			model.eResource().setURI(fileNameMapping.get(model.eResource().getURI()));
-
-			model.eAllContents().forEachRemaining(el -> {
-				el.eCrossReferences().forEach(cr -> {
-					if (cr != null && cr.eResource() != null && fileNameMapping.containsKey(cr.eResource().getURI())) {
-						// replace
-						cr.eResource().setURI(fileNameMapping.get(cr.eResource().getURI()));
-					}
-				});
-			});
-		}
+		// transform everything
+		transformer.transformURIs(uriTransformer);
 
 		// write them to the server
 		setModel(inMemoryAlloc, ESimulationPart.ALLOCATION);
@@ -182,9 +120,9 @@ public class SimulationClient {
 		setModel(inMemoryUsagemodel, ESimulationPart.USAGE_MODEL);
 
 		// write additionals
-		for (URI resource : remainingOnly) {
-			String fName = fileNameMapping.get(resource).lastSegment();
-			setAdditional(resource, "additional/" + fName);
+		for (URI additional : transformer.getTransitives()) {
+			EObject model = transformer.getModelByURI(additional);
+			setAdditional(model, model.eResource().getURI().toFileString());
 		}
 
 		return this;
@@ -198,47 +136,14 @@ public class SimulationClient {
 		Unirest.setTimeouts(10000, 60000);
 	}
 
-	private List<Resource> allCrossReferences(EObject obj) {
-		Set<Resource> references = new HashSet<>();
-		obj.eAllContents().forEachRemaining(e -> {
-			if (e.eCrossReferences().size() > 0) {
-				e.eCrossReferences().forEach(cr -> {
-					references.add(cr.eResource());
-				});
-			}
-		});
-
-		// remove own and nulls
-		references.remove(null);
-		references.remove(obj.eResource());
-
-		// remove pathmaps
-		return references.stream().filter(ref -> ref.getURI().toString().startsWith("file:"))
-				.collect(Collectors.toList());
-	}
-
-	private boolean setAdditional(URI uri, String fName) {
+	private boolean setAdditional(EObject obj, String fName) {
 		try {
-			File tempFile = new File(uri.toFileString());
+			File tempFile = File.createTempFile("pcm_repo", ".model");
+			EMFUtil.saveToFile(obj, tempFile.getAbsolutePath());
 
 			Unirest.post(this.baseUrl + integrateId(SET_ADDITIONAL_URL))
 					.field("file", new FileInputStream(tempFile), ContentType.APPLICATION_OCTET_STREAM, fName)
 					.asString().getBody();
-
-			return true;
-		} catch (IOException | UnirestException e) {
-			return false;
-		}
-	}
-
-	private boolean setAdditional(EObject obj) {
-		try {
-			File tempFile = File.createTempFile("temp", ".model");
-			PcmUtils.saveToFile(obj, tempFile.getAbsolutePath());
-
-			Unirest.post(this.baseUrl + integrateId(SET_ADDITIONAL_URL)).field("file", new FileInputStream(tempFile),
-					ContentType.APPLICATION_OCTET_STREAM, tempFile.getName()).asString().getBody();
-			tempFile.delete();
 
 			return true;
 		} catch (IOException | UnirestException e) {
@@ -251,7 +156,7 @@ public class SimulationClient {
 
 		try {
 			File tempFile = File.createTempFile("pcm_repo", ".model");
-			PcmUtils.saveToFile(obj, tempFile.getAbsolutePath());
+			EMFUtil.saveToFile(obj, tempFile.getAbsolutePath());
 
 			Unirest.post(this.baseUrl + integrateId(SET_URL) + part.toString())
 					.field("file", new FileInputStream(tempFile), ContentType.APPLICATION_OCTET_STREAM, orgFileName)

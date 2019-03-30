@@ -1,5 +1,10 @@
 package org.pcm.automation.api.client;
 
+import org.palladiosimulator.edp2.models.measuringpoint.MeasuringpointPackage;
+import org.palladiosimulator.monitorrepository.MonitorRepositoryPackage;
+import org.palladiosimulator.pcmmeasuringpoint.PcmmeasuringpointPackage;
+import org.pcm.automation.api.util.PcmUtils;
+
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
@@ -16,6 +21,15 @@ public class PCMRestClient {
 	private static final String PREPARE_URL = "prepare";
 
 	private String baseUrl;
+
+	public static void initDependencies() {
+		PcmUtils.loadPCMModels();
+
+		MonitorRepositoryPackage.eINSTANCE.eClass();
+		MeasuringpointPackage.eINSTANCE.eClass();
+		MonitorRepositoryPackage.eINSTANCE.eClass();
+		PcmmeasuringpointPackage.eINSTANCE.eClass();
+	}
 
 	public PCMRestClient(String baseUrl) {
 		this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
