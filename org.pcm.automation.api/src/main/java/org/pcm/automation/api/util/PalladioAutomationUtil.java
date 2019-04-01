@@ -1,5 +1,9 @@
 package org.pcm.automation.api.util;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,12 +24,44 @@ import org.palladiosimulator.pcm.seff.ResourceDemandingSEFF;
 import org.palladiosimulator.pcm.system.System;
 import org.palladiosimulator.pcm.usagemodel.EntryLevelSystemCall;
 import org.palladiosimulator.pcm.usagemodel.UsageModel;
+import org.pcm.automation.api.data.json.JsonAnalysisResults;
+import org.pcm.automation.api.data.json.JsonMeasuringPointResults;
+import org.pcm.automation.api.data.json.JsonServiceResults;
+import org.pcm.automation.api.data.json.JsonTuple;
 
 // TODO refactoring
 public class PalladioAutomationUtil {
 	private static final Pattern ASSEMBLY_CTX_PATTERN = Pattern.compile("AssemblyCtx: (.*),");
 	private static final Pattern CALL_ID_PATTERN = Pattern.compile("CallID: (.*)>");
 	private static final Pattern ENTRY_LEVEL_SYSTEM_PATTERN = Pattern.compile("EntryLevelSystemCall id: (.*) ");
+
+	public static JsonServiceResults getServiceAnalysisResults(Repository repo, UsageModel usage, System system,
+			JsonAnalysisResults json) {
+		JsonServiceResults res = new JsonServiceResults();
+
+		for (JsonTuple<String, JsonMeasuringPointResults> data : json.getServiceResults()) {
+			if (MetricType.fromId(data.getRight().getMetricId()) == MetricType.RESPONSE_TIME) {
+				Pair<ResourceDemandingSEFF, AssemblyContext> mappedSeff = PalladioAutomationUtil
+						.getSeffByMeasuringPoint(repo, usage, system, data.getLeft());
+
+				if (mappedSeff != null) {
+					if (!res.getServiceResults().containsKey(mappedSeff.getLeft())) {
+						res.getServiceResults().put(mappedSeff.getLeft(), new HashMap<>());
+					}
+
+					Map<AssemblyContext, List<JsonMeasuringPointResults>> innerResults = res.getServiceResults()
+							.get(mappedSeff.getLeft());
+					if (!innerResults.containsKey(mappedSeff.getRight())) {
+						innerResults.put(mappedSeff.getRight(), new ArrayList<>());
+					}
+
+					innerResults.get(mappedSeff.getRight()).add(data.getRight());
+				}
+			}
+		}
+
+		return res;
+	}
 
 	public static Pair<ResourceDemandingSEFF, AssemblyContext> getSeffByAssemblySignature(AssemblyContext ctx,
 			OperationRequiredRole reqRole, OperationSignature sig) {
@@ -67,39 +103,46 @@ public class PalladioAutomationUtil {
 		return null;
 	}
 
+	public static Pair<ResourceDemandingSEFF, AssemblyContext> getSeffByMeasuringPoint(Repository repo,
+			UsageModel usage, System system, String metricDescription) {
+		Matcher assemblyMatcher = ASSEMBLY_CTX_PATTERN.matcher(metricDescription);
+		Matcher callIdMatcher = CALL_ID_PATTERN.matcher(metricDescription);
+
+		if (assemblyMatcher.find() && callIdMatcher.find()) {
+			// get belonging action
+			AbstractAction belongingAction = PcmUtils.getElementById(repo, AbstractAction.class,
+					callIdMatcher.group(1));
+			// this stays until i exactly know if the assembly context is relevant or not
+			AssemblyContext ctx = PcmUtils.getElementById(system, AssemblyContext.class, assemblyMatcher.group(1));
+			if (belongingAction != null && ctx != null) {
+				if (belongingAction instanceof ExternalCallAction) {
+					return getSeffByAssemblySignature(ctx,
+							((ExternalCallAction) belongingAction).getRole_ExternalService(),
+							((ExternalCallAction) belongingAction).getCalledService_ExternalService());
+				}
+			}
+		} else {
+			// is entry level system call?
+			Matcher entryCallMatcher = ENTRY_LEVEL_SYSTEM_PATTERN.matcher(metricDescription);
+			if (entryCallMatcher.find()) {
+				EntryLevelSystemCall entryCall = PcmUtils.getElementById(usage, EntryLevelSystemCall.class,
+						entryCallMatcher.group(1));
+				if (entryCall == null) {
+					return null;
+				}
+				return PcmUtils.getSeffByProvidedRoleAndSignature(system,
+						entryCall.getOperationSignature__EntryLevelSystemCall(),
+						entryCall.getProvidedRole_EntryLevelSystemCall());
+			}
+		}
+
+		return null;
+	}
+
 	public static Pair<ResourceDemandingSEFF, AssemblyContext> getSeffByMeasuringPoint(Repository repository,
 			UsageModel usageModel, System system, MeasuringPoint point, MetricDescription metric) {
 		if (getMetricType(metric) == MetricType.RESPONSE_TIME) {
-			Matcher assemblyMatcher = ASSEMBLY_CTX_PATTERN.matcher(point.getStringRepresentation());
-			Matcher callIdMatcher = CALL_ID_PATTERN.matcher(point.getStringRepresentation());
-
-			if (assemblyMatcher.find() && callIdMatcher.find()) {
-				// get belonging action
-				AbstractAction belongingAction = PcmUtils.getElementById(repository, AbstractAction.class,
-						callIdMatcher.group(1));
-				// this stays until i exactly know if the assembly context is relevant or not
-				AssemblyContext ctx = PcmUtils.getElementById(system, AssemblyContext.class, assemblyMatcher.group(1));
-				if (belongingAction != null && ctx != null) {
-					if (belongingAction instanceof ExternalCallAction) {
-						return getSeffByAssemblySignature(ctx,
-								((ExternalCallAction) belongingAction).getRole_ExternalService(),
-								((ExternalCallAction) belongingAction).getCalledService_ExternalService());
-					}
-				}
-			} else {
-				// is entry level system call?
-				Matcher entryCallMatcher = ENTRY_LEVEL_SYSTEM_PATTERN.matcher(point.getStringRepresentation());
-				if (entryCallMatcher.find()) {
-					EntryLevelSystemCall entryCall = PcmUtils.getElementById(usageModel, EntryLevelSystemCall.class,
-							entryCallMatcher.group(1));
-					if (entryCall == null) {
-						return null;
-					}
-					return PcmUtils.getSeffByProvidedRoleAndSignature(system,
-							entryCall.getOperationSignature__EntryLevelSystemCall(),
-							entryCall.getProvidedRole_EntryLevelSystemCall());
-				}
-			}
+			return getSeffByMeasuringPoint(repository, usageModel, system, metric.getTextualDescription());
 		}
 
 		return null;
