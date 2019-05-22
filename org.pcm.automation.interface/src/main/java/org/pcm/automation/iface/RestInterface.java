@@ -86,6 +86,8 @@ public class RestInterface implements InitializingBean {
 
 	@GetMapping("/start/{id}/blocking")
 	public synchronized String startBlocking(@PathVariable String id) {
+		System.gc();
+
 		if (stateMapping.containsKey(id)) {
 			PCMSimulationState state = stateMapping.get(id);
 
