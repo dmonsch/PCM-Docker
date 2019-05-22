@@ -77,7 +77,9 @@ public class RestInterface implements InitializingBean {
 	@GetMapping("/clear/{id}")
 	public synchronized String clear(@PathVariable String id) {
 		if (stateMapping.containsKey(id)) {
-			return stateMapping.get(id).clear() ? "true" : "false";
+			String res = stateMapping.get(id).clear() ? "true" : "false";
+			stateMapping.remove(id);
+			return res;
 		}
 		return "false";
 	}
