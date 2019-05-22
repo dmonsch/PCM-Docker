@@ -14,7 +14,6 @@ public class ClientTest {
 		PCMRestClient.initDependencies();
 	}
 
-	@Test
 	public void test() {
 		PCMRestClient client = new PCMRestClient("127.0.0.1:8080/");
 		assertTrue(client.isReachable(3000));
@@ -34,6 +33,35 @@ public class ClientTest {
 		JsonServiceResults serviceResults = PalladioAutomationUtil.getServiceAnalysisResults(CocomeExample.repo,
 				CocomeExample.usage, CocomeExample.sys, results);
 		System.out.println(serviceResults.getTrackedSEFFs().size());
+	}
+
+	@Test
+	public void test2() {
+		PCMRestClient client = new PCMRestClient("127.0.0.1:8080/");
+		assertTrue(client.isReachable(3000));
+
+		client.clear();
+
+		// create session & pure json results
+		SimulationClient simClient = client.prepareSimulation().setRepository(TeaStoreExample.repo)
+				.setAllocation(TeaStoreExample.allocation).setResourceEnvironment(TeaStoreExample.env)
+				.setSystem(TeaStoreExample.sys).setUsageModel(TeaStoreExample.usage).upload();
+		JsonAnalysisResults results = simClient.startBlocking();
+		simClient.clear();
+
+		System.out.println(results.getServiceResults().size());
+
+		// convert it in data about seffs
+		JsonServiceResults serviceResults = PalladioAutomationUtil.getServiceAnalysisResults(TeaStoreExample.repo,
+				TeaStoreExample.usage, TeaStoreExample.sys, results);
+		serviceResults.getServiceResults().forEach((seff, sr) -> {
+			sr.entrySet().forEach(sr2 -> {
+				sr2.getValue().forEach(res -> {
+					System.out.println(res.getMetricDescription());
+					System.out.println(res.getyValues());
+				});
+			});
+		});
 	}
 
 }
