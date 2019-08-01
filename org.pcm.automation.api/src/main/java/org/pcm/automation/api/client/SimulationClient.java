@@ -19,7 +19,9 @@ import org.pcm.automation.api.data.ESimulationState;
 import org.pcm.automation.api.data.json.JsonAnalysisResults;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.async.Callback;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class SimulationClient {
@@ -44,6 +46,30 @@ public class SimulationClient {
 	public SimulationClient(String baseUrl, String id) {
 		this.baseUrl = baseUrl;
 		this.id = id;
+	}
+	
+	public void startAsync(ISimulationResultListener<JsonAnalysisResults> callback) {
+		Unirest.get(this.baseUrl + integrateId(START_URL_BLOCKING)).asStringAsync(new Callback<String>() {
+			@Override
+			public void completed(HttpResponse<String> response) {
+				try {
+					JsonAnalysisResults res = JSON_MAPPER.readValue(response.getBody(), JsonAnalysisResults.class);
+					callback.onResult(res);
+				} catch (IOException e) {
+					callback.onResult(null);
+				}
+			}
+
+			@Override
+			public void failed(UnirestException e) {
+				callback.onResult(null);
+			}
+
+			@Override
+			public void cancelled() {
+				callback.onResult(null);
+			}
+		});
 	}
 
 	public JsonAnalysisResults startBlocking() {
