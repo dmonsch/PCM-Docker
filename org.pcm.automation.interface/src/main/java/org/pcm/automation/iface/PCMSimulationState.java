@@ -195,9 +195,9 @@ public class PCMSimulationState implements ICompletionInterface {
 					.usagemodel(inMemoryUsage)
 					.system(inMemorySystem)
 					
-					.simucom(250)
-					.reps(2)
-					.measurementtime(25000)
+					.simucom(1024)
+					.reps(3)
+					.measurementtime(100000)
 					
 					.slos(inMemorySlos)
 				.finish()
