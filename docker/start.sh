@@ -10,4 +10,4 @@ gradle bootJar
 # running
 cd /etc/pipeline/PCM-Docker/org.pcm.automation.interface/build/libs/
 
-java -jar pcm-analysis-interface-0.1.0.jar --javaPath="java" --eclipsePath="/etc/eclipse/eclipse/"
+java -Xmx2056M -jar pcm-analysis-interface-0.1.0.jar --javaPath="java" --eclipsePath="/etc/eclipse/eclipse/"
