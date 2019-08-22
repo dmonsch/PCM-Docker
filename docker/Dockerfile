@@ -26,9 +26,9 @@ RUN chmod +x /*.sh
 RUN apt-get update && \
 add-apt-repository ppa:linuxuprising/java && \
 apt-get update && \
-echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
-apt-get install -y oracle-java12-set-default && \
-echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
+echo oracle-java11-set-default-local shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
+apt-get install -y oracle-java11-set-default-local && \
+echo oracle-java11-set-default-local shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
 apt-get install -y ant && \
 apt-get clean && \
 rm -rf /var/lib/apt/lists/*
@@ -40,7 +40,7 @@ apt-get install -y ca-certificates-java && \
 apt-get clean && \
 update-ca-certificates -f && \
 rm -rf /var/lib/apt/lists/* && \
-rm -rf /var/cache/oracle-jdk12-installer;
+rm -rf /var/cache/oracle-java11-set-default-local;
 
 # Setup JAVA_HOME, this is useful for docker commandline
 #ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
@@ -90,6 +90,9 @@ RUN mkdir /etc/pipeline && \
 	git clone https://github.com/dmonsch/PCM-Docker && \
 	cd /etc/pipeline/PCM-Docker/org.pcm.automation.interface/ && \
 	gradle bootJar
+
+# more eclipse power
+RUN echo "-Xverify:none" >> /etc/eclipse/eclipse/eclipse.ini
 
 EXPOSE 8080 8080
 
