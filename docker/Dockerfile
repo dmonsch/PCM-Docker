@@ -24,11 +24,14 @@ RUN chmod +x /*.sh
 # Install Java.
 # This is in accordance to : https://www.digitalocean.com/community/tutorials/how-to-install-java-with-apt-get-on-ubuntu-16-04
 RUN apt-get update && \
-apt-get install -y openjdk-8-jdk && \
+add-apt-repository ppa:linuxuprising/java && \
+apt-get update && \
+echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
+apt-get install -y oracle-java12-set-default && \
+echo oracle-java12-installer shared/accepted-oracle-license-v1-2 select true | /usr/bin/debconf-set-selections && \
 apt-get install -y ant && \
 apt-get clean && \
-rm -rf /var/lib/apt/lists/* && \
-rm -rf /var/cache/oracle-jdk8-installer;
+rm -rf /var/lib/apt/lists/*
  
 # Fix certificate issues, found as of 
 # https://bugs.launchpad.net/ubuntu/+source/ca-certificates-java/+bug/983302
@@ -37,11 +40,11 @@ apt-get install -y ca-certificates-java && \
 apt-get clean && \
 update-ca-certificates -f && \
 rm -rf /var/lib/apt/lists/* && \
-rm -rf /var/cache/oracle-jdk8-installer;
+rm -rf /var/cache/oracle-jdk12-installer;
 
 # Setup JAVA_HOME, this is useful for docker commandline
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
-RUN export JAVA_HOME
+#ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+#RUN export JAVA_HOME
 
 #Install eclipse
 RUN mkdir /etc/eclipse && \
