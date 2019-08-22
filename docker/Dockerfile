@@ -88,6 +88,9 @@ RUN mkdir /etc/pipeline && \
 	cd /etc/pipeline/PCM-Docker/org.pcm.automation.interface/ && \
 	gradle bootJar
 
+# more eclipse power
+RUN echo "-Xverify:none" >> /etc/eclipse/eclipse/eclipse.ini
+
 EXPOSE 8080 8080
 
 CMD ["/start.sh"] 
