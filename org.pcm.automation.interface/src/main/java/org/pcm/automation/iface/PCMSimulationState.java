@@ -23,6 +23,7 @@ import org.pcm.automation.api.client.util.EMFUtil;
 import org.pcm.automation.api.data.ESimulationPart;
 import org.pcm.automation.api.data.ESimulationState;
 import org.pcm.automation.api.data.PalladioAnalysisResults;
+import org.pcm.automation.api.data.json.ESimulatorType;
 import org.pcm.automation.core.ExperimentBuilder;
 import org.pcm.automation.core.HeadlessExecutor;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +38,12 @@ public class PCMSimulationState implements ICompletionInterface {
 	private ResourceEnvironment inMemoryEnv;
 	private UsageModel inMemoryUsage;
 	private ServiceLevelObjectiveRepository inMemorySlos;
+
+	// DEFAULT SETTINGS
+	private int measurements = 100;
+	private ESimulatorType simulator = ESimulatorType.SIMUCOM;
+	private int repetitions = 1;
+	private int measurementTime = 20000;
 
 	private ExperimentRepository currentConfiguration;
 	private ESimulationState state;
@@ -154,6 +161,22 @@ public class PCMSimulationState implements ICompletionInterface {
 		return analysisResults;
 	}
 
+	public void setMeasurements(int measurements) {
+		this.measurements = measurements;
+	}
+
+	public void setSimulator(ESimulatorType simulator) {
+		this.simulator = simulator;
+	}
+
+	public void setRepetitions(int repetitions) {
+		this.repetitions = repetitions;
+	}
+
+	public void setMeasurementTime(int measurementTime) {
+		this.measurementTime = measurementTime;
+	}
+
 	// PRIVATES WITH LOGIC
 	private void syncExperimentConfiguration() {
 		createSloRepositoryIfNotExists();
@@ -183,7 +206,7 @@ public class PCMSimulationState implements ICompletionInterface {
 		this.inMemorySlos = EMFUtil.readFromFile(sloFile.getAbsolutePath(), ServiceLevelObjectiveRepository.class);
 
 		// @formatter:off
-		this.currentConfiguration = 
+		ExperimentBuilder.BuilderExperiment builder = 
 			ExperimentBuilder.create()
 				.experiment()
 					.name("EXP")
@@ -194,15 +217,19 @@ public class PCMSimulationState implements ICompletionInterface {
 					.repository(inMemoryRepository)
 					.usagemodel(inMemoryUsage)
 					.system(inMemorySystem)
+					.reps(this.repetitions)
+					.measurementtime(this.measurementTime)
 					
-					.simucom(512)
-					.reps(1)
-					.measurementtime(50000)
-					
-					.slos(inMemorySlos)
-				.finish()
-			.build();
+					.slos(inMemorySlos);
 		// @formatter:on
+
+		if (this.simulator == ESimulatorType.SIMUCOM) {
+			builder.simucom(this.measurements);
+		} else if (this.simulator == ESimulatorType.SIMULIZAR) {
+			builder.simulizar(this.measurements);
+		}
+
+		this.currentConfiguration = builder.finish().build();
 	}
 
 	private File createSloRepositoryIfNotExists() {

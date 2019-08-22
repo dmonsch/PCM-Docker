@@ -3,6 +3,7 @@ package org.pcm.automation.api.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Optional;
 
 import org.apache.http.entity.ContentType;
 import org.eclipse.emf.common.util.URI;
@@ -16,9 +17,13 @@ import org.pcm.automation.api.client.logic.TransitiveModelTransformer;
 import org.pcm.automation.api.client.util.EMFUtil;
 import org.pcm.automation.api.data.ESimulationPart;
 import org.pcm.automation.api.data.ESimulationState;
+import org.pcm.automation.api.data.json.ESimulatorType;
 import org.pcm.automation.api.data.json.JsonAnalysisResults;
+import org.pcm.automation.api.data.json.JsonSimulationConfiguration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.async.Callback;
@@ -29,6 +34,7 @@ public class SimulationClient {
 	private static final String SET_URL = "set/{id}/";
 	private static final String CLEAR_URL = "clear/{id}";
 	private static final String SET_ADDITIONAL_URL = "set/{id}/additional";
+	private static final String SET_CONFIG_URL = "set/{id}/config";
 	private static final String START_URL_BLOCKING = "start/{id}/blocking";
 
 	private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
@@ -43,11 +49,19 @@ public class SimulationClient {
 	private Allocation inMemoryAlloc;
 	private UsageModel inMemoryUsagemodel;
 
+	private JsonSimulationConfiguration currentConfiguration;
+
+	private ObjectMapper objectMapper;
+
 	public SimulationClient(String baseUrl, String id) {
 		this.baseUrl = baseUrl;
 		this.id = id;
+
+		this.currentConfiguration = new JsonSimulationConfiguration();
+		this.objectMapper = new ObjectMapper();
+		objectMapper.registerModule(new Jdk8Module());
 	}
-	
+
 	public void startAsync(ISimulationResultListener<JsonAnalysisResults> callback) {
 		Unirest.get(this.baseUrl + integrateId(START_URL_BLOCKING)).asStringAsync(new Callback<String>() {
 			@Override
@@ -101,6 +115,22 @@ public class SimulationClient {
 		return this;
 	}
 
+	public void setSimulator(ESimulatorType type) {
+		this.currentConfiguration.setSimulator(Optional.of(type));
+	}
+
+	public void setMeasurements(int measurements) {
+		this.currentConfiguration.setMeasurements(Optional.of(measurements));
+	}
+
+	public void setRepetitions(int repetitions) {
+		this.currentConfiguration.setRepetitions(Optional.of(repetitions));
+	}
+
+	public void setMeasurementTime(int time) {
+		this.currentConfiguration.setTime(Optional.of(time));
+	}
+
 	public SimulationClient setAllocation(Allocation allocation) {
 		this.inMemoryAlloc = allocation;
 		return this;
@@ -127,6 +157,9 @@ public class SimulationClient {
 	}
 
 	public SimulationClient upload() {
+		// write configuration
+		uploadConfiguration();
+
 		// create transformer
 		TransitiveModelTransformer transformer = new TransitiveModelTransformer(inMemoryAlloc, inMemoryEnv,
 				inMemoryRepo, inMemorySystem, inMemoryUsagemodel);
@@ -152,6 +185,15 @@ public class SimulationClient {
 		}
 
 		return this;
+	}
+
+	private void uploadConfiguration() {
+		try {
+			Unirest.post(this.baseUrl + integrateId(SET_CONFIG_URL))
+					.field("configJson", objectMapper.writeValueAsString(currentConfiguration)).asString().getBody();
+		} catch (JsonProcessingException | UnirestException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private String integrateId(String url) {

@@ -35,6 +35,9 @@ allprojects {
 		
 		// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
 		compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.8.1'
+		
+		// https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jdk8
+		compile group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jdk8', version: '2.9.9'
 	}
 
     repositories {

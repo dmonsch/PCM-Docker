@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.apache.commons.io.FileUtils;
 import org.pcm.automation.api.data.ESimulationPart;
 import org.pcm.automation.api.data.PalladioAnalysisResults;
+import org.pcm.automation.api.data.json.JsonSimulationConfiguration;
 import org.pcm.automation.core.HeadlessExecutor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 
 @RestController
 public class RestInterface implements InitializingBean {
@@ -103,6 +105,30 @@ public class RestInterface implements InitializingBean {
 		return "{}";
 	}
 
+	@PostMapping("/set/{id}/config")
+	public synchronized void setConfiguration(@PathVariable String id, @RequestParam String configJson) {
+		// TODO
+		if (stateMapping.containsKey(id)) {
+			PCMSimulationState state = stateMapping.get(id);
+			try {
+				JsonSimulationConfiguration config = objectMapper.readValue(configJson,
+						JsonSimulationConfiguration.class);
+
+				if (config.getMeasurements().isPresent())
+					state.setMeasurements(config.getMeasurements().get());
+				if (config.getRepetitions().isPresent())
+					state.setRepetitions(config.getRepetitions().get());
+				if (config.getSimulator().isPresent())
+					state.setSimulator(config.getSimulator().get());
+				if (config.getTime().isPresent())
+					state.setMeasurementTime(config.getMeasurements().get());
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		}
+	}
+
 	@PostMapping("/set/{id}/additional")
 	public synchronized void setAdditionalHook(@PathVariable String id, @RequestParam("file") MultipartFile file) {
 		if (stateMapping.containsKey(id)) {
@@ -127,6 +153,7 @@ public class RestInterface implements InitializingBean {
 	public void afterPropertiesSet() throws Exception {
 		this.executor = new HeadlessExecutor(javaPath, eclipsePath);
 		this.objectMapper = new ObjectMapper();
+		this.objectMapper.registerModule(new Jdk8Module());
 		this.stateMapping = new HashMap<>();
 	}
 
