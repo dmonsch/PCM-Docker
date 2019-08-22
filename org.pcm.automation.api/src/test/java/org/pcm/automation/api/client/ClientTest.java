@@ -14,6 +14,7 @@ public class ClientTest {
 		PCMRestClient.initDependencies();
 	}
 
+	@Test
 	public void test() {
 		PCMRestClient client = new PCMRestClient("127.0.0.1:8080/");
 		assertTrue(client.isReachable(3000));
@@ -23,7 +24,8 @@ public class ClientTest {
 		// create session & pure json results
 		SimulationClient simClient = client.prepareSimulation().setRepository(CocomeExample.repo)
 				.setAllocation(CocomeExample.allocation).setResourceEnvironment(CocomeExample.env)
-				.setSystem(CocomeExample.sys).setUsageModel(CocomeExample.usage).upload();
+				.setSystem(CocomeExample.sys).setUsageModel(CocomeExample.usage).setMeasurements(200).setRepetitions(2)
+				.upload();
 		JsonAnalysisResults results = simClient.startBlocking();
 		simClient.clear();
 
@@ -35,7 +37,6 @@ public class ClientTest {
 		System.out.println(serviceResults.getTrackedSEFFs().size());
 	}
 
-	@Test
 	public void test2() {
 		PCMRestClient client = new PCMRestClient("127.0.0.1:8080/");
 		assertTrue(client.isReachable(3000));

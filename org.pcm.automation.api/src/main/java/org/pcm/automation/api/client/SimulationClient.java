@@ -115,20 +115,24 @@ public class SimulationClient {
 		return this;
 	}
 
-	public void setSimulator(ESimulatorType type) {
+	public SimulationClient setSimulator(ESimulatorType type) {
 		this.currentConfiguration.setSimulator(Optional.of(type));
+		return this;
 	}
 
-	public void setMeasurements(int measurements) {
+	public SimulationClient setMeasurements(int measurements) {
 		this.currentConfiguration.setMeasurements(Optional.of(measurements));
+		return this;
 	}
 
-	public void setRepetitions(int repetitions) {
+	public SimulationClient setRepetitions(int repetitions) {
 		this.currentConfiguration.setRepetitions(Optional.of(repetitions));
+		return this;
 	}
 
-	public void setMeasurementTime(int time) {
+	public SimulationClient setMeasurementTime(int time) {
 		this.currentConfiguration.setTime(Optional.of(time));
+		return this;
 	}
 
 	public SimulationClient setAllocation(Allocation allocation) {
